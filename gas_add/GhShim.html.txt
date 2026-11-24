@@ -1,0 +1,76 @@
+<style>
+#ghGate{position:fixed;inset:0;background:rgba(20,30,28,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+#ghGate>div{background:#fff;border-radius:14px;max-width:460px;width:100%;padding:22px 22px 18px;font-size:15px;line-height:1.7;color:#22302c}
+#ghGate h2{margin:0 0 8px;font-size:19px}
+#ghGate input{width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #9bb0a8;border-radius:8px;margin:8px 0}
+#ghGate button{padding:9px 16px;font-size:15px;border-radius:8px;border:0;background:#17594a;color:#fff;cursor:pointer}
+#ghGate .err{color:#b3261e;min-height:1.4em}
+#ghBar{position:sticky;top:0;z-index:50;background:#eef5f1;border-bottom:1px solid #cfe0d8;color:#2d4a41;font-size:13px;padding:6px 14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#ghBar.warn{background:#fff4e5;border-color:#f0c98a;color:#7a4b00}
+#ghBar.bad{background:#fdecea;border-color:#f1b0aa;color:#8c1d18}
+#ghBar button{font-size:12px;padding:2px 8px;border:1px solid #9bb0a8;border-radius:6px;background:#fff;color:inherit;cursor:pointer}
+</style>
+<script>
+/* GitHub 版橋接:把頁面原本對 Google 的呼叫改成「寫進私人倉庫排隊 → 等 Google 端處理 → 讀回結果」。
+   頁面本身不含任何會議資料;金鑰只存在這台裝置的瀏覽器。 */
+(()=>{'use strict';
+const REPO='city2243/meeting-desk-data',API='https://api.github.com/repos/'+REPO+'/contents/',KEY='meetingDeskGhToken';
+const METHODS=['listEditableMeetings','previewInvitation','importInvitation','openEditableMeeting','previewMeetingEdit','checkMeetingEdit','saveMeetingEdit'];
+const WAIT_MS=170000,POLL_MS=2500;
+let token='',pending=0,bridgeOk=null,cacheAt='',lastNote='';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function b64(text){const bytes=new TextEncoder().encode(text);let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s);}
+function headers(raw){return {Authorization:'Bearer '+token,Accept:raw?'application/vnd.github.raw+json':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};}
+async function ghRaw(path){const r=await fetch(API+path+'?ref=main&_='+Date.now(),{headers:headers(true),cache:'no-store'});if(r.status===404)return null;if(r.status===401||r.status===403)throw authError(r.status);if(!r.ok)throw Error('GitHub 讀取失敗（'+r.status+'）');return r.text();}
+async function ghPut(path,text,message){const r=await fetch(API+path,{method:'PUT',headers:headers(false),body:JSON.stringify({message,content:b64(text),branch:'main'})});if(r.status===401||r.status===403)throw authError(r.status);if(!r.ok)throw Error('GitHub 寫入失敗（'+r.status+'）');}
+function authError(code){const e=Error(code===401?'GitHub 金鑰無效或已過期，請重新輸入。':'GitHub 拒絕存取（403）：金鑰權限不足，或短時間內請求太多。');e.auth=code===401;return e;}
+function newId(){const rand=crypto.getRandomValues(new Uint8Array(6));return Date.now()+'-'+[...rand].map(b=>b.toString(16).padStart(2,'0')).join('');}
+
+function bar(){const el=document.getElementById('ghBar');if(!el)return;
+  let text='GitHub 版｜寫入經 Google 端處理，第一筆最慢約 1 分鐘，之後數秒。';let cls='';
+  if(cacheAt)text+='　清單內容更新於 '+cacheAt+'。';
+  if(pending)text+='　處理中 '+pending+' 筆…';
+  if(bridgeOk===false){cls='bad';text='Google 端沒有回應：現在送出的新增與修改不會寫入試算表。清單仍是上次同步的內容。請稍後再試，或通知 Claude 檢查橋接排程。';}
+  else if(lastNote){cls='warn';text=lastNote;}
+  el.className=cls;el.firstChild.textContent=text;}
+
+async function enqueue(fn,arg){const id=newId();await ghPut('queue/'+id+'.json',JSON.stringify({id,fn,arg:arg===undefined?null:arg,at:Date.now()}),'queue '+fn);return id;}
+async function waitResult(id){const start=Date.now();while(Date.now()-start<WAIT_MS){await sleep(POLL_MS);const text=await ghRaw('results/'+id+'.json');if(text!==null)return JSON.parse(text);}return null;}
+async function viaQueue(fn,arg){pending++;bar();try{const id=await enqueue(fn,arg);const out=await waitResult(id);
+    if(!out){bridgeOk=false;throw Error('Google 端逾時未回應');}
+    bridgeOk=true;lastNote='';if(!out.ok)throw Error(out.error||'Google 端執行失敗');return out.value;
+  }finally{pending--;bar();}}
+async function listFromCache(){const text=await ghRaw('cache/meetings.json');if(text===null)return viaQueue('listEditableMeetings',{});
+  const data=JSON.parse(text);cacheAt=String(data.at||'').replace('T',' ').slice(0,16);bar();return data.result;}
+async function call(fn,arg){if(!token)await gate();
+  try{return fn==='listEditableMeetings'?await listFromCache():await viaQueue(fn,arg);}
+  catch(e){if(e.auth){localStorage.removeItem(KEY);token='';lastNote='GitHub 金鑰失效，請重新整理頁面後再輸入一次。';bar();}throw e;}}
+
+function runner(ok,fail){const r={withSuccessHandler:fn=>runner(fn,fail),withFailureHandler:fn=>runner(ok,fn),withUserObject:()=>r};
+  for(const name of METHODS)r[name]=arg=>{call(name,arg).then(v=>ok&&ok(v),e=>fail&&fail(e));};return r;}
+window.google=window.google||{};window.google.script={run:runner(null,null),host:{close(){},setHeight(){},setWidth(){}}};
+
+let gateDone=null;
+function gate(){if(gateDone)return gateDone;gateDone=new Promise(resolve=>{
+  const saved=(()=>{try{return localStorage.getItem(KEY)||'';}catch{return '';}})();
+  if(saved){token=saved;resolve();return;}
+  const show=()=>{const wrap=document.createElement('div');wrap.id='ghGate';wrap.innerHTML='<div><h2>輸入 GitHub 金鑰</h2><p>這個頁面不含會議資料。請貼上只授權「meeting-desk-data」倉庫讀寫的金鑰；金鑰只存在這台裝置的瀏覽器。</p><input id="ghTok" type="password" autocomplete="off" placeholder="github_pat_…"><p class="err" id="ghErr"></p><button id="ghGo" type="button">開始使用</button></div>';
+    document.body.append(wrap);const input=wrap.querySelector('#ghTok'),err=wrap.querySelector('#ghErr'),go=wrap.querySelector('#ghGo');
+    const submit=async()=>{const value=input.value.trim();if(!value){err.textContent='請貼上金鑰。';return;}go.disabled=true;err.textContent='檢查中…';
+      try{const r=await fetch('https://api.github.com/repos/'+REPO,{headers:{Authorization:'Bearer '+value,Accept:'application/vnd.github+json'}});
+        if(!r.ok){err.textContent=r.status===401?'金鑰無效。':'這把金鑰讀不到資料倉庫（'+r.status+'）。';go.disabled=false;return;}
+        const info=await r.json();if(!info.permissions||!info.permissions.push){err.textContent='這把金鑰只能讀、不能寫，請確認 Contents 權限是「Read and write」。';go.disabled=false;return;}
+        token=value;try{localStorage.setItem(KEY,value);}catch{}wrap.remove();resolve();
+      }catch{err.textContent='連不上 GitHub，請檢查網路後再試。';go.disabled=false;}};
+    go.addEventListener('click',submit);input.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});input.focus();};
+  if(document.body)show();else document.addEventListener('DOMContentLoaded',show);});return gateDone;}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const el=document.createElement('div');el.id='ghBar';el.append(document.createTextNode(''));
+  const out=document.createElement('button');out.type='button';out.textContent='登出這台裝置';out.addEventListener('click',()=>{if(confirm('清除這台裝置上的 GitHub 金鑰？')){try{localStorage.removeItem(KEY);}catch{}location.reload();}});
+  el.append(out);document.body.prepend(el);bar();
+  /* 開頁先喚醒 Google 端,之後的操作就不用等整分鐘;也順便確認橋接活著。 */
+  gate().then(()=>viaQueue('ping',null)).catch(()=>{bar();});
+});
+})();
+</script>
