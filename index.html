@@ -1,1 +1,288 @@
-<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>我的會議</title><p>準備中。</p>
+<!doctype html><html lang="zh-Hant"><head><base target="_top"><style>
+:root{font:16px/1.6 system-ui,-apple-system,"Noto Sans TC",sans-serif;color:#173c3a;background:#f1f5f1;color-scheme:light}*{box-sizing:border-box}body{margin:0}main{max-width:840px;margin:auto;padding:32px 20px 60px}header{margin-bottom:24px}h1{font-size:clamp(28px,5vw,38px);line-height:1.3;margin:6px 0 12px}h2{font-size:22px;margin:0}h3{font-size:19px;margin:0 0 8px}.eyebrow{font-size:12px;letter-spacing:2px;font-weight:700;color:#4b746c}.muted,footer{color:#5c706b;font-size:14px}section{background:white;border:1px solid #d9e5dd;border-radius:18px;padding:24px;margin:20px 0;box-shadow:0 3px 12px #163c3b06}label{display:block;font-weight:600;font-size:14px;margin:12px 0 6px}textarea,input{font:inherit;color:#173c3a;background:#fcfdfb;border:1px solid #afc2b7;border-radius:8px;width:100%;padding:12px;min-width:0}textarea{resize:vertical}.grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px}button{border:0;border-radius:9px;background:#16675b;color:white;font:600 16px system-ui;padding:13px 22px;cursor:pointer;min-height:46px}button:disabled{opacity:.45;cursor:wait}#parse{color:#16675b;background:#e8f1eb}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.card{border-top:1px solid #dce6de;padding:20px 0;overflow-wrap:anywhere}.card p{margin:5px 0}.badge{display:inline-block;background:#edf4ee;padding:3px 9px;border-radius:20px;font-size:13px;color:#3c695c}.warning{background:#fff7dd;color:#765413;padding:10px;border-radius:8px;font-size:14px}.error{background:#fee9e5;color:#922e23;padding:14px;border-radius:9px}#message{white-space:pre-line}a{color:#12675c}details{margin:18px 0}summary{cursor:pointer}footer{margin-top:24px}#save{width:100%}.field{white-space:pre-line}button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #d09627;outline-offset:3px}[hidden]{display:none!important}@media(max-width:560px){main{padding:22px 14px 40px}section{padding:18px}.grid{grid-template-columns:1fr;gap:0}.section-head{display:block}input[type=date]{min-height:48px}}
+input[type=checkbox]{width:20px;height:20px;padding:0;margin:0 8px 0 0;vertical-align:middle;accent-color:#16675b}#reviewWrap{background:#fff7dd;padding:12px;border-radius:8px}#reviewWrap label{margin:0}#cancel{color:#16675b;background:#e8f1eb;margin-top:8px}.warning,.error{white-space:pre-line}button:disabled{cursor:not-allowed}
+.edit-list-row button{width:100%;text-align:left;margin:8px 0;background:#e8f1eb;color:#16675b}#editMessage{white-space:pre-line;margin:16px 0}#editDiff{overflow-wrap:anywhere}#editOriginal{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 system-ui}.draft-fields{padding:12px;border:1px solid #d9e5dd;border-radius:10px}.draft-fields summary{font-weight:700}#editSave{margin-top:12px}
+
+#manage>summary{padding:18px 22px;background:#e8f1eb;border:1px solid #afc2b7;border-radius:12px;font-weight:700}#manageLink,#overviewRefresh{background:#e8f1eb;color:#16675b}.meeting-card{padding:20px 0;border-top:1px solid #dce6de;overflow-wrap:anywhere}.meeting-card p{margin:7px 0;white-space:pre-line}.meeting-card h3{margin-top:8px}.join-meeting{display:inline-block;background:#16675b;color:#fff;text-decoration:none;padding:10px 18px;border-radius:9px;margin:8px 0}.meeting-card details{margin:10px 0}.meeting-card summary{font-weight:600}#overviewMessage{font-size:14px;color:#5c706b}#overviewMessage.error{color:#922e23}#pastMeetings>summary{font-weight:600}#undatedMeetings h3{margin-top:20px}
+</style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>我的會議</title><style>
+#ghGate{position:fixed;inset:0;background:rgba(20,30,28,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+#ghGate>div{background:#fff;border-radius:14px;max-width:460px;width:100%;padding:22px 22px 18px;font-size:15px;line-height:1.7;color:#22302c}
+#ghGate h2{margin:0 0 8px;font-size:19px}
+#ghGate input{width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #9bb0a8;border-radius:8px;margin:8px 0}
+#ghGate button{padding:9px 16px;font-size:15px;border-radius:8px;border:0;background:#17594a;color:#fff;cursor:pointer}
+#ghGate .err{color:#b3261e;min-height:1.4em}
+#ghBar{position:sticky;top:0;z-index:50;background:#eef5f1;border-bottom:1px solid #cfe0d8;color:#2d4a41;font-size:13px;padding:6px 14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#ghBar.warn{background:#fff4e5;border-color:#f0c98a;color:#7a4b00}
+#ghBar.bad{background:#fdecea;border-color:#f1b0aa;color:#8c1d18}
+#ghBar button{font-size:12px;padding:2px 8px;border:1px solid #9bb0a8;border-radius:6px;background:#fff;color:inherit;cursor:pointer}
+</style>
+<script>
+
+
+(()=>{'use strict';
+const REPO='city2243/meeting-desk-data',API='https://api.github.com/repos/'+REPO+'/contents/',KEY='meetingDeskGhToken';
+const METHODS=['listEditableMeetings','previewInvitation','importInvitation','openEditableMeeting','previewMeetingEdit','checkMeetingEdit','saveMeetingEdit'];
+const WAIT_MS=170000,POLL_MS=2500;
+let token='',pending=0,bridgeOk=null,cacheAt='',lastNote='';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function b64(text){const bytes=new TextEncoder().encode(text);let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s);}
+function headers(raw){return {Authorization:'Bearer '+token,Accept:raw?'application/vnd.github.raw+json':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};}
+async function ghRaw(path){const r=await fetch(API+path+'?ref=main&_='+Date.now(),{headers:headers(true),cache:'no-store'});if(r.status===404)return null;if(r.status===401||r.status===403)throw authError(r.status);if(!r.ok)throw Error('GitHub 讀取失敗（'+r.status+'）');return r.text();}
+async function ghPut(path,text,message){const r=await fetch(API+path,{method:'PUT',headers:headers(false),body:JSON.stringify({message,content:b64(text),branch:'main'})});if(r.status===401||r.status===403)throw authError(r.status);if(!r.ok)throw Error('GitHub 寫入失敗（'+r.status+'）');}
+function authError(code){const e=Error(code===401?'GitHub 金鑰無效或已過期，請重新輸入。':'GitHub 拒絕存取（403）：金鑰權限不足，或短時間內請求太多。');e.auth=code===401;return e;}
+function newId(){const rand=crypto.getRandomValues(new Uint8Array(6));return Date.now()+'-'+[...rand].map(b=>b.toString(16).padStart(2,'0')).join('');}
+
+function bar(){const el=document.getElementById('ghBar');if(!el)return;
+  let text='GitHub 版｜寫入經 Google 端處理，第一筆最慢約 1 分鐘，之後數秒。';let cls='';
+  if(cacheAt)text+='　清單內容更新於 '+cacheAt+'。';
+  if(pending)text+='　處理中 '+pending+' 筆…';
+  if(bridgeOk===false){cls='bad';text='Google 端沒有回應：現在送出的新增與修改不會寫入試算表。清單仍是上次同步的內容。請稍後再試，或通知 Claude 檢查橋接排程。';}
+  else if(lastNote){cls='warn';text=lastNote;}
+  el.className=cls;el.firstChild.textContent=text;}
+
+async function enqueue(fn,arg){const id=newId();await ghPut('queue/'+id+'.json',JSON.stringify({id,fn,arg:arg===undefined?null:arg,at:Date.now()}),'queue '+fn);return id;}
+async function waitResult(id){const start=Date.now();while(Date.now()-start<WAIT_MS){await sleep(POLL_MS);const text=await ghRaw('results/'+id+'.json');if(text!==null)return JSON.parse(text);}return null;}
+async function viaQueue(fn,arg){pending++;bar();try{const id=await enqueue(fn,arg);const out=await waitResult(id);
+    if(!out){bridgeOk=false;throw Error('Google 端逾時未回應');}
+    bridgeOk=true;lastNote='';if(!out.ok)throw Error(out.error||'Google 端執行失敗');return out.value;
+  }finally{pending--;bar();}}
+async function listFromCache(){const text=await ghRaw('cache/meetings.json');if(text===null)return viaQueue('listEditableMeetings',{});
+  const data=JSON.parse(text);cacheAt=String(data.at||'').replace('T',' ').slice(0,16);bar();return data.result;}
+async function call(fn,arg){if(!token)await gate();
+  try{return fn==='listEditableMeetings'?await listFromCache():await viaQueue(fn,arg);}
+  catch(e){if(e.auth){localStorage.removeItem(KEY);token='';lastNote='GitHub 金鑰失效，請重新整理頁面後再輸入一次。';bar();}throw e;}}
+
+function runner(ok,fail){const r={withSuccessHandler:fn=>runner(fn,fail),withFailureHandler:fn=>runner(ok,fn),withUserObject:()=>r};
+  for(const name of METHODS)r[name]=arg=>{call(name,arg).then(v=>ok&&ok(v),e=>fail&&fail(e));};return r;}
+window.google=window.google||{};window.google.script={run:runner(null,null),host:{close(){},setHeight(){},setWidth(){}}};
+
+let gateDone=null;
+function gate(){if(gateDone)return gateDone;gateDone=new Promise(resolve=>{
+  const saved=(()=>{try{return localStorage.getItem(KEY)||'';}catch{return '';}})();
+  if(saved){token=saved;resolve();return;}
+  const show=()=>{const wrap=document.createElement('div');wrap.id='ghGate';wrap.innerHTML='<div><h2>輸入 GitHub 金鑰</h2><p>這個頁面不含會議資料。請貼上只授權「meeting-desk-data」倉庫讀寫的金鑰；金鑰只存在這台裝置的瀏覽器。</p><input id="ghTok" type="password" autocomplete="off" placeholder="github_pat_…"><p class="err" id="ghErr"></p><button id="ghGo" type="button">開始使用</button></div>';
+    document.body.append(wrap);const input=wrap.querySelector('#ghTok'),err=wrap.querySelector('#ghErr'),go=wrap.querySelector('#ghGo');
+    const submit=async()=>{const value=input.value.trim();if(!value){err.textContent='請貼上金鑰。';return;}go.disabled=true;err.textContent='檢查中…';
+      try{const r=await fetch('https://api.github.com/repos/'+REPO,{headers:{Authorization:'Bearer '+value,Accept:'application/vnd.github+json'}});
+        if(!r.ok){err.textContent=r.status===401?'金鑰無效。':'這把金鑰讀不到資料倉庫（'+r.status+'）。';go.disabled=false;return;}
+        const info=await r.json();if(!info.permissions||!info.permissions.push){err.textContent='這把金鑰只能讀、不能寫，請確認 Contents 權限是「Read and write」。';go.disabled=false;return;}
+        token=value;try{localStorage.setItem(KEY,value);}catch{}wrap.remove();resolve();
+      }catch{err.textContent='連不上 GitHub，請檢查網路後再試。';go.disabled=false;}};
+    go.addEventListener('click',submit);input.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});input.focus();};
+  if(document.body)show();else document.addEventListener('DOMContentLoaded',show);});return gateDone;}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const el=document.createElement('div');el.id='ghBar';el.append(document.createTextNode(''));
+  const out=document.createElement('button');out.type='button';out.textContent='登出這台裝置';out.addEventListener('click',()=>{if(confirm('清除這台裝置上的 GitHub 金鑰？')){try{localStorage.removeItem(KEY);}catch{}location.reload();}});
+  el.append(out);document.body.prepend(el);bar();
+   
+  gate().then(()=>viaQueue('ping',null)).catch(()=>{bar();});
+});
+})();
+</script>
+</head><body>
+
+<main><header><p class="eyebrow">JAIME 的會議工作台</p><h1>我的會議</h1><p>開啟即自動載入會議資訊。日期與時間均為台北時間。</p><button id="manageLink" type="button">新增或修改會議</button></header>
+<section id="overview" aria-labelledby="overviewTitle"><div class="section-head"><h2 id="overviewTitle">今天與接下來的會議</h2><button id="overviewRefresh" type="button">重新整理</button></div><p id="overviewMessage" role="status" aria-live="polite">正在載入會議資訊…</p><div id="upcomingMeetings"></div><div id="undatedMeetings"></div><details id="pastMeetings"><summary id="pastSummary">過去的會議</summary><div id="pastList"></div></details></section>
+<details id="manage"><summary>新增或修改會議</summary>
+
+<section><label for="raw">原始邀請訊息</label><textarea id="raw" rows="10" maxlength="20000" placeholder="貼上完整邀請訊息，包含日期、時間、主題與入會資訊。"></textarea>
+
+<div class="grid"><div><label for="source">來源網址或說明（選填）</label><input id="source" maxlength="1000" placeholder="例如 Slack 訊息連結"></div><div><label for="sourceDate">來源訊息日期（貼舊訊息時選填）</label><input id="sourceDate" type="date"></div></div>
+
+<details><summary>年份設定（通常不用填）</summary><p>一般採今年；10–12 月貼入 1–2 月會議時採明年，跨年只需核對一次。原文明示年份優先；舊訊息可填來源日期。</p><label for="year">整批指定年份（選填，僅套用原文未寫年份的場次）</label><input id="year" type="number" min="1900" max="2200" placeholder="例如 2026"></details>
+
+<p class="muted">輸入與保存內容均不接受 emoji；含 emoji 的網址或密碼須重新輸入完整憑證。缺年份會自動依貼上日（台北）或來源日期判斷；每場預覽都會列出完整日期，可一鍵切換年份。缺日期或時間仍可存為待補；報名網址會另存，不當作入會網址。</p>
+
+<button id="parse" type="button">重新解析</button> <button id="cancel" type="button">清空並取消預覽</button></section>
+
+<div id="message" role="status" aria-live="polite">貼上訊息後會自動解析。</div>
+
+<section id="previewSection" hidden><div class="section-head"><h2>匯入預覽</h2><span id="count"></span></div><div id="preview"></div><button id="reviewDraft" type="button">核對人工修正與差異</button><p id="reviewWrap" hidden><label><input id="confirmReview" type="checkbox">我已核對警告與待補欄位，確認以上資料可匯入；短連結目的地須另行確認。</label></p><p id="saveReason" role="status" aria-live="polite">請先完成解析與核對。</p><button id="save" aria-describedby="saveReason" type="button" disabled>寫入專用 Sheet</button><p class="muted">只有 Jaime 可寫入。原文和來源會移除 emoji 後保存，重複訊息會略過；同場內容不同或疑似改期會停止整批，請先在 Sheet 核對。寫入開始後無法取消。</p></section>
+
+<section id="existing"><h2>修改已存會議</h2><p>只有本人可編輯；以固定記錄識別更新原筆，不新增場次。原始邀請僅會清除 emoji；受影響的憑證須重新核對。</p><button id="editRefresh" type="button">載入／重新整理會議清單</button><div id="editList"></div><div id="editMessage" role="status" aria-live="polite"></div><div id="editPanel" hidden><h3 id="editTitle"></h3><div id="editFields" class="grid"></div><details><summary>原始邀請（不顯示 emoji）</summary><pre id="editOriginal"></pre></details><button id="editReview" type="button">查看修改差異</button> <button id="editCancel" type="button">取消修改</button><div id="editDiff"></div><p id="editConfirmWrap" hidden><label><input id="editConfirm" type="checkbox">我已核對修改前後內容及待補警告，確認更新原筆會議。</label></p><button id="editSave" type="button" disabled>確認更新原筆</button> <button id="editCheck" type="button" hidden>查核上次儲存結果</button></div></section>
+
+</details><footer><a href="https://docs.google.com/spreadsheets/d/1pPxjUK6LF3ZI9sDsrgHnDftTSsm6J3OC7etSSEKUmsY/edit" target="_blank" rel="noopener noreferrer">開啟專用 Google Sheet</a><p id="updated">本頁修改將存回此專用試算表。</p></footer></main><script>
+(()=>{'use strict';
+ 
+function sanitizeEmoji_(value){return String(value==null?'':value).replace(/[0-9#*]\uFE0F?\u20E3/gu,'').replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}\u200D\uFE00-\uFE0F\u20E3\u{E0020}-\u{E007F}\u{E0100}-\u{E01EF}]/gu,'');}
+function containsEmoji_(value){const text=String(value==null?'':value);return sanitizeEmoji_(text)!==text;}
+function sanitizeEmojiTree_(value){if(typeof value==='string')return sanitizeEmoji_(value);if(Array.isArray(value))return value.map(sanitizeEmojiTree_);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitizeEmojiTree_(v)]));return value;}
+function emojiCredentialRisk_(value){
+  const text=String(value==null?'':value);if(text.includes('[憑證待核對：請重新輸入]'))return true;
+  
+  if((text.normalize('NFKC').match(/https?:\/\/[^\s<>|"\]]+/gi)||[]).some(containsEmoji_))return true;
+  const lines=text.normalize('NFKC').split(/\r\n?|\n|[\u2028\u2029]/);return lines.some((line,index)=>{const m=line.match(/((?:(?:會議|網頁)?密碼|(?:meeting\s+)?(?:password|passcode)|(?:電話)?存取碼|access\s*code|會議\s*(?:ID|號碼?|編號)|meeting\s*(?:id|number))\s*[:：])([^\r\n]*)/i);if(!m)return false;if(m[2].trim())return containsEmoji_(m[2]);const next=lines.slice(index+1).find(s=>s.trim())||'';return !/^[^\p{L}\p{N}]*[\p{L}][^:：]*[:：]/u.test(sanitizeEmoji_(next))&&containsEmoji_(next);});
+}
+function cleanEmojiInput_(value,key){
+  let text=String(value==null?'':value);const marker='[憑證待核對：請重新輸入]';
+  if(['joinUrl','registrationUrls','passcode','meetingId','dialAccessCode','dialIn'].includes(key)&&containsEmoji_(text))return marker;
+  text=text.replace(/https?[:：][\/／]{2}[^\s<>|"\]]+/gi,token=>containsEmoji_(token)?marker:token);
+  text=text.replace(/[^\r\n\u2028\u2029]+/g,line=>line.replace(/((?:(?:會議|網頁)?密碼|(?:meeting\s+)?(?:password|passcode)|(?:電話)?存取碼|access\s*code|會議\s*(?:ID|號碼?|編號)|meeting\s*(?:id|number))\s*[:：])([^\r\n]*)/i,(all,label,credential)=>containsEmoji_(credential)?label+marker:all));
+  
+  if(emojiCredentialRisk_(text)&&!text.includes(marker))return marker;
+  return sanitizeEmoji_(text);
+}
+function sanitizeEmojiDisplay_(value,key){if(typeof value==='string')return cleanEmojiInput_(value,key);if(Array.isArray(value))return value.map(v=>sanitizeEmojiDisplay_(v,key));if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitizeEmojiDisplay_(v,['before','after'].includes(k)&&value.field?value.field:k)]));return value;}
+
+const $=id=>document.getElementById(id);let loading=false,queued=false,hasData=false;
+function node(tag,value='',cls){const e=document.createElement(tag);e.textContent=sanitizeEmoji_(value);if(cls)e.className=cls;return e;}
+function status(value,error=false){$('overviewMessage').textContent=sanitizeEmoji_(value);$('overviewMessage').className=error?'error':'';}
+function safeLink(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!/[\s<>]/.test(value)&&!value.includes('[憑證待核對')?u.href:null;}catch{return null;}}
+function card(record){
+ const e=node('article','','meeting-card');
+ e.append(node('span',(record.date||'日期待補')+'　'+(record.time||'時間待補')+' · 台北','badge'),node('h3',record.name||'主題待補'));
+ const speaker=[record.speakerOrganization,record.speaker].filter(Boolean).join(' · ');if(speaker)e.append(node('p','主講：'+speaker));
+ const href=safeLink(record.joinUrl||'');if(href){const a=node('a','加入會議','join-meeting');a.href=href;a.target='_blank';a.rel='noopener noreferrer';e.append(a);}else e.append(node('p','入會連結待補或待核對','muted'));
+ for(const [label,value] of [['會議 ID',record.meetingId],['密碼',record.passcode]])if(value)e.append(node('p',label+'：'+value));
+ const fields=[['系列',record.series],['備註',record.notes],['錄製狀態',record.status],['電話撥入',record.dialIn],['電話存取碼',record.dialAccessCode],['報名網址',record.registrationUrls]].filter(([,v])=>v);
+ if(fields.length){const details=node('details');details.append(node('summary','其他會議資訊'));for(const [label,value] of fields)details.append(node('p',label+'：'+value));e.append(details);}
+ return e;
+}
+function render(records){
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const part=type=>parts.find(p=>p.type===type).value,today=part('year')+'-'+part('month')+'-'+part('day');
+ const sorted=[...records].sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999')||(a.time||'99').localeCompare(b.time||'99'));
+ const upcoming=sorted.filter(r=>r.date&&r.date>=today),unknown=sorted.filter(r=>!r.date),past=sorted.filter(r=>r.date&&r.date<today).sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||''));
+ $('upcomingMeetings').replaceChildren(...upcoming.map(card));
+ if(!upcoming.length)$('upcomingMeetings').append(node('p',records.length?'目前沒有今天或接下來的會議。':'目前還沒有會議，使用「新增或修改會議」貼上邀請即可。','muted'));
+ $('undatedMeetings').replaceChildren();if(unknown.length)$('undatedMeetings').append(node('h3','日期待補的會議'),...unknown.map(card));
+ $('pastList').replaceChildren(...past.map(card));$('pastSummary').textContent='過去的會議（'+past.length+' 場）';$('pastMeetings').hidden=!past.length;
+ status('已載入 '+records.length+' 場；今天與接下來 '+upcoming.length+' 場。');hasData=true;
+}
+function readMeetings(){return new Promise((resolve,reject)=>{let settled=false;const timer=setTimeout(()=>{if(settled)return;settled=true;reject(Error('讀取逾時'));},180000);const done=fn=>value=>{if(settled)return;settled=true;clearTimeout(timer);fn(value);};google.script.run.withSuccessHandler(done(resolve)).withFailureHandler(done(reject)).listEditableMeetings({});});}
+async function load(){
+ if(loading){queued=true;return;}loading=true;$('overviewRefresh').disabled=true;status(hasData?'正在更新會議資訊…':'正在載入會議資訊…');
+ try{const r=sanitizeEmojiDisplay_(await readMeetings());if(r?.status!=='success'||!Array.isArray(r.records))throw Error(r?.message||'讀取失敗');render(r.records);}
+ catch{status(hasData?'更新失敗，下方保留上次資料，可能不是最新；請按「重新整理」。':'暫時無法載入會議。請確認登入原本的 Google 帳號，再按「重新整理」。',true);}
+ finally{loading=false;$('overviewRefresh').disabled=false;if(queued){queued=false;load();}}
+}
+$('overviewRefresh').addEventListener('click',load);
+$('manageLink').addEventListener('click',()=>{$('manage').open=true;$('manage').scrollIntoView({behavior:'smooth',block:'start'});});
+document.addEventListener('meetingsChanged',load);
+load();
+
+})();
+</script>
+<script>
+(()=>{'use strict';
+ 
+function sanitizeEmoji_(value){return String(value==null?'':value).replace(/[0-9#*]\uFE0F?\u20E3/gu,'').replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}\u200D\uFE00-\uFE0F\u20E3\u{E0020}-\u{E007F}\u{E0100}-\u{E01EF}]/gu,'');}
+function containsEmoji_(value){const text=String(value==null?'':value);return sanitizeEmoji_(text)!==text;}
+function sanitizeEmojiTree_(value){if(typeof value==='string')return sanitizeEmoji_(value);if(Array.isArray(value))return value.map(sanitizeEmojiTree_);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitizeEmojiTree_(v)]));return value;}
+function emojiCredentialRisk_(value){
+  const text=String(value==null?'':value);if(text.includes('[憑證待核對：請重新輸入]'))return true;
+  
+  if((text.normalize('NFKC').match(/https?:\/\/[^\s<>|"\]]+/gi)||[]).some(containsEmoji_))return true;
+  const lines=text.normalize('NFKC').split(/\r\n?|\n|[\u2028\u2029]/);return lines.some((line,index)=>{const m=line.match(/((?:(?:會議|網頁)?密碼|(?:meeting\s+)?(?:password|passcode)|(?:電話)?存取碼|access\s*code|會議\s*(?:ID|號碼?|編號)|meeting\s*(?:id|number))\s*[:：])([^\r\n]*)/i);if(!m)return false;if(m[2].trim())return containsEmoji_(m[2]);const next=lines.slice(index+1).find(s=>s.trim())||'';return !/^[^\p{L}\p{N}]*[\p{L}][^:：]*[:：]/u.test(sanitizeEmoji_(next))&&containsEmoji_(next);});
+}
+function cleanEmojiInput_(value,key){
+  let text=String(value==null?'':value);const marker='[憑證待核對：請重新輸入]';
+  if(['joinUrl','registrationUrls','passcode','meetingId','dialAccessCode','dialIn'].includes(key)&&containsEmoji_(text))return marker;
+  text=text.replace(/https?[:：][\/／]{2}[^\s<>|"\]]+/gi,token=>containsEmoji_(token)?marker:token);
+  text=text.replace(/[^\r\n\u2028\u2029]+/g,line=>line.replace(/((?:(?:會議|網頁)?密碼|(?:meeting\s+)?(?:password|passcode)|(?:電話)?存取碼|access\s*code|會議\s*(?:ID|號碼?|編號)|meeting\s*(?:id|number))\s*[:：])([^\r\n]*)/i,(all,label,credential)=>containsEmoji_(credential)?label+marker:all));
+  
+  if(emojiCredentialRisk_(text)&&!text.includes(marker))return marker;
+  return sanitizeEmoji_(text);
+}
+function sanitizeEmojiDisplay_(value,key){if(typeof value==='string')return cleanEmojiInput_(value,key);if(Array.isArray(value))return value.map(v=>sanitizeEmojiDisplay_(v,key));if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitizeEmojiDisplay_(v,['before','after'].includes(k)&&value.field?value.field:k)]));return value;}
+
+const $=id=>document.getElementById(id);let referenceDate='',timer,version=0,ready=null,saving=false,needsReview=false,blocked=false,editValues=[],manualOrigin=null,previewControls=[],blockReasons=[];
+const baseInput=()=>({raw:$('raw').value,source:$('source').value,sourceDate:$('sourceDate').value,year:$('year').value,...(referenceDate?{referenceDate}:{})});
+const input=()=>({...baseInput(),...(editValues.length?{edits:editValues}:{})});
+const fields={date:'日期',time:'開始時間',name:'會議名稱',joinUrl:'入會連結',notes:'密碼或備註',status:'錄製狀態',meetingId:'會議 ID',passcode:'網頁密碼',speaker:'主講人',speakerOrganization:'主講單位',dialIn:'電話撥入號',dialAccessCode:'電話存取碼',registrationUrls:'報名網址',series:'系列'};
+function message(value,error=false){$('message').textContent=sanitizeEmoji_(value);$('message').className=error?'error':'';}
+function text(tag,value='',cls){const e=document.createElement(tag);e.textContent=sanitizeEmoji_(value);if(cls)e.className=cls;return e;}
+function yearCompletion(item,index){const wrap=text('div','','warning'),label=text('label','這份邀請只差年份，已保留 '+item.dateParts.month+'/'+item.dateParts.day+'、'+(item.time||'時間待補')+' 與主題。'),year=document.createElement('input'),button=text('button','確認年份並重新核對');year.id='complete-year-'+index;year.type='number';year.min='1900';year.max='2200';year.placeholder='只填年份，例如 2026';button.id='confirm-year-'+index;button.type='button';label.append(year);wrap.append(label,button);previewControls.push(year,button);button.addEventListener('click',()=>{if(saving)return;const value=year.value.trim();if(!/^\d{4}$/.test(value)||+value<1900||+value>2200){message('請輸入 1900–2200 的四位數年份；其他欄位已保留。',true);return;}if(editValues.length&&manualOrigin!==JSON.stringify(baseInput())){message('原文或來源已變更，請先核對目前內容；人工修正仍保留。',true);return;}$('year').value=value;if(editValues.length)manualOrigin=JSON.stringify(baseInput());parse();});return wrap;}
+function yearSwitch(item,index,items){const wrap=text('details'),summary=text('summary','修改這場的年份（目前 '+item.date.slice(0,4)+' 年）');wrap.append(summary);for(const offset of [-1,1]){const year=+item.date.slice(0,4)+offset,button=text('button','改成 '+year+' 年');button.type='button';button.id='switch-year-'+index+'-'+year;button.addEventListener('click',()=>{if(saving)return;if(editValues.length&&manualOrigin!==JSON.stringify(baseInput())){message('原文或來源已變更，請先核對目前內容；人工修正仍保留。',true);return;}const date=year+item.date.slice(4),parsed=new Date(date+'T00:00:00Z');if(year<1900||year>2200||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==date){message('這一年沒有此日期，請在這場的欄位中修正完整日期。',true);return;}if(!editValues.length){manualOrigin=JSON.stringify(baseInput());editValues=items.map(i=>({blockNumber:i.blockNumber,values:{}}));}editValues[index].values.date=date;parse();});wrap.append(button);previewControls.push(button);}return wrap;}
+function locationText(c){return c.origin==='batch'?'同批第 '+c.candidateNumber+' 場':'Sheet 第 '+c.row+' 列';}
+function recordLink(c,parent){if(c.origin==='batch'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/1pPxjUK6LF3ZI9sDsrgHnDftTSsm6J3OC7etSSEKUmsY\/edit#gid=525750056&range=A\d+:X\d+$/.test(c.sheetUrl||''))return;const link=text('a','開啟 '+locationText(c));link.href=c.sheetUrl;link.target='_blank';link.rel='noopener noreferrer';parent.append(link);}
+function conflictCard(c){const card=text('section','','card error');card.append(text('strong','資料衝突：第 '+c.blockNumber+' 場與'+locationText(c)),text('p','既有：'+(c.existingDate||'日期待補')+' '+(c.existingTime||'時間待補')+' '+(c.existingName||c.name)),text('p',c.reason||'同場資料有差異'));
+for(const d of c.differences||[]){const part=text('details');part.append(text('summary',d.label+'不同（展開看新舊值）'),text('p','既有值：'+(d.before||'空白'),'field'),text('p','本次值：'+(d.after||'空白'),'field'));card.append(part);}
+card.append(text('p',c.origin==='batch'?'請展開本批各場的「直接修正這場的欄位」核對；同一邀請請只保留一份，再按「核對人工修正與差異」。':'若是已存入的會議，不必再匯入；若要更正，使用下方「修改已存會議」，重新整理清單並選擇上述日期與名稱。若是另一場，請補齊或修正本次日期、時間、名稱後重新核對。'));
+recordLink(c,card);return card;}
+function canSave(){return !!ready&&!saving&&!blocked&&(!needsReview||$('confirmReview').checked)&&JSON.stringify(ready.data)===JSON.stringify(input());}
+function syncSave(){
+  $('save').disabled=!canSave();
+  const reason=$('saveReason');if(!reason)return;
+  let msg='';
+  if(saving)msg='正在寫入，請等候結果。';
+  else if(editValues.length&&manualOrigin!==JSON.stringify(baseInput()))msg='尚不能寫入：原文或來源已變更，人工修正仍保留。請先保留目前內容，再核對原文與修正。';
+  else if(!ready||JSON.stringify(ready.data)!==JSON.stringify(input()))msg='尚不能寫入：目前內容尚未完成核對。請按「核對人工修正與差異」，等解析完成後再確認。';
+  else if(blocked)msg='尚不能寫入：'+blockReasons.join('；')+(blockReasons.some(s=>s.includes('尚缺'))?'。勾選確認不能代替補齊欄位。':'。勾選確認不會解除這些衝突。');
+  else if(needsReview&&!$('confirmReview').checked)msg='請先核對預覽，再勾選確認警告與待補欄位。';
+  else msg='已完成核對，可以寫入專用 Sheet。';
+  reason.textContent=msg;reason.className=blocked&&ready?'error':'muted';
+}
+function rpc(method,args){return new Promise((resolve,reject)=>{let finished=false;const timeout=setTimeout(()=>{finished=true;reject(new Error('回應逾時，寫入結果尚未確認。請重新解析檢查 Sheet 後再決定是否重試。'));},180000);const done=fn=>v=>{if(finished)return;finished=true;clearTimeout(timeout);fn(sanitizeEmojiDisplay_(v));};google.script.run.withSuccessHandler(done(resolve)).withFailureHandler(done(()=>reject(new Error('無法連線，寫入結果尚未確認。請重新解析檢查 Sheet 後再決定是否重試。'))))[method](args);});}
+function render(result){const items=result.items;previewControls=[];$('preview').replaceChildren();$('count').textContent=items.length+' 場';for(const [index,item] of items.entries()){const card=text('article','','card'),end=item.endTime?'–'+(item.endDate&&item.endDate!==item.date?item.endDate+' ':'')+item.endTime:'';card.append(text('h3',item.name||'主題待補'),text('span',(item.date||(item.missingYear&&item.dateParts?item.dateParts.month+'/'+item.dateParts.day+'（年份待確認）':'日期待補'))+'　'+(item.time||'時間待補')+end+' · 台北','badge'));
+if(item.missingYear&&item.dateParts)card.append(yearCompletion(item,index));
+if(item.yearBasis)card.append(text('p','年份依據：'+item.yearBasis,'muted'));
+if(item.autoYear&&item.date)card.append(yearSwitch(item,index,items));
+for(const [label,value] of [['系列',item.series],['公司',[item.stockCode,item.company].filter(Boolean).join(' ')],['主辦單位',item.organizer],['平台',item.platform],['主講',[item.speakerOrganization,item.speaker,item.speakerRole].filter(Boolean).join(' ')],['實際入會網址',item.joinUrl||'待補'],['會議 ID',item.meetingId],['網頁密碼',item.passcode],['電話撥入',item.dialIn],['電話存取碼',item.dialAccessCode],['報名網址（另存）',item.registrationUrls],['備註',item.notes]])if(value)card.append(text('p',label+'：'+value,'field'));
+if(item.warnings.length)card.append(text('p',item.warnings.join('\n'),'warning'));
+if(item.issues.length)card.append(text('p','待確認：'+item.issues.join('；')+'。請補正原文，或勾選確認後存為待補。','warning'));
+if(item.blockingIssues?.length)card.append(text('p','停止匯入：'+item.blockingIssues.join('；'),'error'));
+const form=text('details','','draft-fields');form.append(text('summary','直接修正這場的欄位'));for(const [key,label] of Object.entries(fields)){const wrap=text('label',label),control=document.createElement(key==='notes'?'textarea':'input');control.value=cleanEmojiInput_(item[key]||'',key);if(key!=='notes')control.type=key==='date'?'date':key==='time'?'time':key==='passcode'?'password':'text';control.id='draft-'+index+'-'+key;control.addEventListener('input',()=>{if(saving)return;const before=control.value;control.value=cleanEmojiInput_(before,key);if(!editValues.length){manualOrigin=JSON.stringify(baseInput());editValues=items.map(i=>({blockNumber:i.blockNumber,values:{}}));}editValues[index].values[key]=control.value;version++;ready=null;clearTimeout(timer);$('confirmReview').checked=false;syncSave();message(before!==control.value?'已清除 emoji；憑證若標記待核對，請重新輸入完整內容。':'人工修正已保留。請按「核對人工修正與差異」後再儲存。',before!==control.value);});wrap.append(control);form.append(wrap);previewControls.push(control);}card.append(form);
+if(item.diff?.length){const changes=text('div','','warning');changes.append(text('strong','人工修正差異'));for(const d of item.diff)changes.append(text('p',d.label+'：'+(d.sensitive?'內容已修改（敏感內容不在差異列顯示）':(d.before||'空白')+' → '+(d.after||'空白'))));card.append(changes);}
+$('preview').append(card);}
+for(const pending of result.pendingMatches||[]){const p=text('p','第 '+pending.blockNumber+' 場：'+pending.reason+' 共用會議室參考：'+locationText(pending)+'。','warning');recordLink(pending,p);$('preview').append(p);}
+for(const conflict of result.conflicts||[])$('preview').append(conflictCard(conflict));
+if(result.duplicates?.length){$('preview').append(text('p','已存在 '+result.duplicates.length+' 筆相同記錄，不必再匯入；若按寫入只會重新核對並略過，不新增。','muted'));for(const d of result.duplicates){const p=text('p',(d.name||'此會議')+'：'+locationText(d));recordLink(d,p);$('preview').append(p);}}
+for(const room of result.sharedRooms||[])if(![...(result.conflicts||[]),...(result.duplicates||[]),...(result.pendingMatches||[])].some(c=>c.blockNumber===room.blockNumber))$('preview').append(text('p','共用會議室提醒：第 '+room.blockNumber+' 場與'+locationText(room)+'「'+room.existingName+'」（'+room.existingDate+' '+room.existingTime+'）共用入會資訊，但日期時間與主題不同，可作新場新增。','muted'));
+$('previewSection').hidden=false;$('reviewWrap').hidden=!needsReview;}
+async function parse(){if(saving)return;for(const id of ['raw','source','sourceDate','year'])$(id).value=cleanEmojiInput_($(id).value,id);if(editValues.length&&manualOrigin!==JSON.stringify(baseInput())){message('原文或來源已變更；人工修正仍保留。請恢復原文，或按「清空並取消預覽」後再處理新邀請。',true);return;}clearTimeout(timer);const request=++version;ready=null;$('confirmReview').checked=false;syncSave();if(!input().raw.trim()){$('previewSection').hidden=true;message('貼上訊息後會自動解析。');return;}message('正在解析並檢查既有資料…');try{const data=input(),result=await rpc('previewInvitation',data);if(request!==version||JSON.stringify(data)!==JSON.stringify(input()))return;if(result.status!=='success')throw new Error(result.message);if(result.referenceDate){referenceDate=result.referenceDate;data.referenceDate=referenceDate;if(editValues.length)manualOrigin=JSON.stringify(baseInput());}ready={data,previewToken:result.previewToken};needsReview=result.items.some(i=>i.requiresConfirmation);blockReasons=[...result.items.flatMap((i,n)=>(i.blockingIssues||[]).map(s=>'第 '+(n+1)+' 場：'+s)),...(result.pendingMatches||[]).map(c=>'第 '+c.blockNumber+' 場尚缺 '+c.missingFields.join('、')+'，請補齊後重新核對'),...(result.conflicts||[]).map(c=>'與'+locationText(c)+'衝突'+(c.differences?.length?'，差異：'+c.differences.map(d=>d.label).join('、'):''))];blocked=blockReasons.length>0;render(result);message(blocked?(result.pendingMatches?.length?'請先補齊缺漏欄位，再重新核對；已辨識內容保留於預覽。':'發現衝突，下方已列出對應記錄、差異與處理方式。'):needsReview?'請核對預覽並勾選確認警告與待補欄位。':'解析完成。請確認預覽後寫入。',blocked);syncSave();}catch(e){if(request!==version)return;message(e.message,true);if(!editValues.length)$('previewSection').hidden=true;}}
+function invalidate(){version++;ready=null;$('confirmReview').checked=false;syncSave();$('previewSection').hidden=true;clearTimeout(timer);}
+function changed(){if(saving)return;for(const id of ['raw','source','sourceDate','year'])$(id).value=cleanEmojiInput_($(id).value,id);if(editValues.length){version++;ready=null;clearTimeout(timer);syncSave();message('原文或來源已變更，人工修正仍保留，未自動重新解析。',true);return;}referenceDate='';invalidate();timer=setTimeout(parse,650);}
+for(const id of ['raw','source','sourceDate','year'])$(id).addEventListener('input',changed);$('parse').addEventListener('click',parse);$('reviewDraft').addEventListener('click',parse);$('confirmReview').addEventListener('change',syncSave);
+$('cancel').addEventListener('click',()=>{if(saving)return;editValues=[];manualOrigin=null;referenceDate='';invalidate();for(const id of ['raw','source','sourceDate','year'])$(id).value='';message('已清空並取消預覽，尚未送出寫入。');});
+$('save').addEventListener('click',async()=>{if(!canSave())return;const payload={...ready.data,previewToken:ready.previewToken,confirmReview:$('confirmReview').checked};saving=true;syncSave();for(const control of previewControls)control.disabled=true;for(const id of ['parse','reviewDraft','cancel','raw','source','sourceDate','year','confirmReview'])$(id).disabled=true;message('正在寫入專用 Google Sheet…寫入開始後無法取消。');try{const result=await rpc('importInvitation',payload);if(result.status!=='success')throw new Error(result.message);let msg='已寫入 '+result.added+' 場；略過重複 '+result.duplicates.length+' 場。';if(result.missing)msg+='其中 '+result.missing+' 場含待補資料。';if(JSON.stringify(payload.raw)!==JSON.stringify(input().raw))msg+='先前送出的內容已處理；目前輸入尚未儲存。';message(msg);document.dispatchEvent?.(new Event('meetingsChanged'));$('updated').textContent='最近完成寫入檢查：'+new Intl.DateTimeFormat('zh-TW',{dateStyle:'medium',timeStyle:'medium',timeZone:'Asia/Taipei'}).format(new Date(result.updatedAt));}catch(e){message(e.message,true);}finally{saving=false;invalidate();for(const control of previewControls)control.disabled=false;for(const id of ['parse','reviewDraft','cancel','raw','source','sourceDate','year','confirmReview'])$(id).disabled=false;}});
+})();
+</script>
+<script>
+(()=>{'use strict';
+ 
+function sanitizeEmoji_(value){return String(value==null?'':value).replace(/[0-9#*]\uFE0F?\u20E3/gu,'').replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}\u200D\uFE00-\uFE0F\u20E3\u{E0020}-\u{E007F}\u{E0100}-\u{E01EF}]/gu,'');}
+function containsEmoji_(value){const text=String(value==null?'':value);return sanitizeEmoji_(text)!==text;}
+function sanitizeEmojiTree_(value){if(typeof value==='string')return sanitizeEmoji_(value);if(Array.isArray(value))return value.map(sanitizeEmojiTree_);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitizeEmojiTree_(v)]));return value;}
+function emojiCredentialRisk_(value){
+  const text=String(value==null?'':value);if(text.includes('[憑證待核對：請重新輸入]'))return true;
+  
+  if((text.normalize('NFKC').match(/https?:\/\/[^\s<>|"\]]+/gi)||[]).some(containsEmoji_))return true;
+  const lines=text.normalize('NFKC').split(/\r\n?|\n|[\u2028\u2029]/);return lines.some((line,index)=>{const m=line.match(/((?:(?:會議|網頁)?密碼|(?:meeting\s+)?(?:password|passcode)|(?:電話)?存取碼|access\s*code|會議\s*(?:ID|號碼?|編號)|meeting\s*(?:id|number))\s*[:：])([^\r\n]*)/i);if(!m)return false;if(m[2].trim())return containsEmoji_(m[2]);const next=lines.slice(index+1).find(s=>s.trim())||'';return !/^[^\p{L}\p{N}]*[\p{L}][^:：]*[:：]/u.test(sanitizeEmoji_(next))&&containsEmoji_(next);});
+}
+function cleanEmojiInput_(value,key){
+  let text=String(value==null?'':value);const marker='[憑證待核對：請重新輸入]';
+  if(['joinUrl','registrationUrls','passcode','meetingId','dialAccessCode','dialIn'].includes(key)&&containsEmoji_(text))return marker;
+  text=text.replace(/https?[:：][\/／]{2}[^\s<>|"\]]+/gi,token=>containsEmoji_(token)?marker:token);
+  text=text.replace(/[^\r\n\u2028\u2029]+/g,line=>line.replace(/((?:(?:會議|網頁)?密碼|(?:meeting\s+)?(?:password|passcode)|(?:電話)?存取碼|access\s*code|會議\s*(?:ID|號碼?|編號)|meeting\s*(?:id|number))\s*[:：])([^\r\n]*)/i,(all,label,credential)=>containsEmoji_(credential)?label+marker:all));
+  
+  if(emojiCredentialRisk_(text)&&!text.includes(marker))return marker;
+  return sanitizeEmoji_(text);
+}
+function sanitizeEmojiDisplay_(value,key){if(typeof value==='string')return cleanEmojiInput_(value,key);if(Array.isArray(value))return value.map(v=>sanitizeEmojiDisplay_(v,key));if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,sanitizeEmojiDisplay_(v,['before','after'].includes(k)&&value.field?value.field:k)]));return value;}
+
+const $=id=>document.getElementById(id),labels={date:'日期',time:'開始時間',name:'會議名稱',joinUrl:'入會連結',notes:'密碼或備註',status:'錄製狀態',meetingId:'會議 ID',passcode:'網頁密碼',series:'系列',speakerOrganization:'主講單位',speaker:'主講人',dialIn:'電話撥入號',dialAccessCode:'電話存取碼',registrationUrls:'報名網址'};let active=null,controls={},dirty=false,busy=false,uncertain=false,review=null,pending=null,submittedValues=null,sequence=0,listButtons=[],listEntries=[];
+function el(tag,value,cls){const n=document.createElement(tag);n.textContent=sanitizeEmoji_(value||'');if(cls)n.className=cls;return n;}
+function message(v,error=false){$('editMessage').textContent=sanitizeEmoji_(v);$('editMessage').className=error?'error':'notice';}
+function values(){return Object.fromEntries(Object.entries(controls).map(([k,n])=>[k,cleanEmojiInput_(n.value,k)]));}
+function patch(){const current=values();return Object.fromEntries(Object.entries(current).filter(([k,v])=>v!==active?.item[k]));}
+function controlsState(){for(const n of Object.values(controls))n.disabled=busy||uncertain;for(const n of listButtons)n.disabled=busy||uncertain;$('editRefresh').disabled=busy||uncertain;$('editReview').disabled=!active||busy||uncertain;$('editCancel').disabled=busy||uncertain;$('editConfirm').disabled=busy||uncertain;$('editSave').disabled=!review||busy||uncertain||!$('editConfirm').checked||JSON.stringify(patch())!==review.patchJson;$('editCheck').hidden=!pending;$('editCheck').disabled=busy;}
+function invalidateReview(){review=null;$('editDiff').replaceChildren();$('editConfirmWrap').hidden=true;$('editConfirm').checked=false;controlsState();}
+function rpc(method,args){return new Promise((resolve,reject)=>{let finished=false;const timer=setTimeout(()=>{finished=true;reject(Error('回應逾時，結果待確認。輸入已保留，請查核上次儲存結果。'));},180000);const done=fn=>v=>{if(finished)return;finished=true;clearTimeout(timer);fn(sanitizeEmojiDisplay_(v));};google.script.run.withSuccessHandler(done(resolve)).withFailureHandler(done(()=>reject(Error('連線失敗，結果待確認；輸入已保留。'))))[method](args);});}
+function checked(r){if(r?.status!=='success')throw Error(r?.message||'操作未完成，請保留輸入後再試。');return r;}
+function drawRecord(r){r=sanitizeEmojiDisplay_(r);active={recordId:r.recordId,baseVersion:r.baseVersion,item:{...r.item}};dirty=false;uncertain=false;pending=null;controls={};$('editFields').replaceChildren();$('editTitle').textContent=r.item.name||'未命名會議';$('editOriginal').textContent=r.originalText||'這筆資料沒有保存原始邀請。';for(const [key,label] of Object.entries(labels)){const wrap=el('label',label),control=document.createElement(key==='notes'?'textarea':'input');control.id='edit-'+key;if(key!=='notes')control.type=key==='date'?'date':key==='time'?'time':key==='passcode'?'password':'text';control.value=cleanEmojiInput_(r.item[key]||'',key);control.addEventListener('input',()=>{const before=control.value;control.value=cleanEmojiInput_(before,key);dirty=true;sequence++;invalidateReview();message(before!==control.value?'已清除 emoji；憑證若標記待核對，請重新輸入完整內容。':'修改已保留，尚未儲存。請查看差異後更新原筆。',before!==control.value);});controls[key]=control;wrap.append(control);$('editFields').append(wrap);}$('editPanel').hidden=false;invalidateReview();}
+async function open(record){if(busy||uncertain)return;if(dirty){message('目前有尚未儲存的修改，請先儲存或按「取消修改」，再開啟另一場。',true);return;}busy=true;controlsState();const seq=++sequence;message('正在讀取目前版本…');try{const r=checked(await rpc('openEditableMeeting',{recordId:record.recordId,selectionHash:record.selectionHash}));if(seq!==sequence)return;drawRecord(r);message('已開啟原筆會議。修改後請先查看差異。');}catch(e){message(e.message,true);}finally{busy=false;controlsState();}}
+$('editRefresh').addEventListener('click',async()=>{if(busy||uncertain)return;busy=true;controlsState();message('正在載入會議清單…');try{const r=checked(await rpc('listEditableMeetings',{}));listButtons=[];listEntries=[];$('editList').replaceChildren();for(const record of r.records){const row=el('div','','edit-list-row'),button=el('button',(record.date||'日期待補')+' '+(record.time||'時間待補')+' · '+record.name+' — 開啟修改');button.type='button';button.addEventListener('click',()=>open(record));row.append(button);$('editList').append(row);listButtons.push(button);listEntries.push({button,record});}if(!r.records.length)$('editList').append(el('p','目前沒有可編輯的會議。'));message(dirty?'清單已更新，你目前的修改仍保留。':'請選取要修改的會議。');}catch(e){message(e.message,true);}finally{busy=false;controlsState();}});
+$('editReview').addEventListener('click',async()=>{if(!active||busy||uncertain)return;const change=patch();if(!Object.keys(change).length){message('目前沒有變更。');return;}busy=true;invalidateReview();controlsState();const seq=++sequence,patchJson=JSON.stringify(change);message('正在核對版本與修改差異…');try{const r=checked(await rpc('previewMeetingEdit',{recordId:active.recordId,baseVersion:active.baseVersion,patch:change}));if(seq!==sequence||patchJson!==JSON.stringify(patch()))return;review={...r,patch:change,patchJson};$('editDiff').replaceChildren(el('h3','儲存前差異'));for(const d of r.diff)$('editDiff').append(el('p',d.label+'：'+(d.sensitive?'已變更（敏感內容不在差異列顯示）':(d.before||'空白')+' → '+(d.after||'空白'))));for(const warning of r.warnings)$('editDiff').append(el('p',warning,'warning'));$('editConfirmWrap').hidden=!r.diff.length;message('請核對差異並勾選確認，才會更新原筆。');}catch(e){message(e.message,true);}finally{busy=false;controlsState();}});
+$('editConfirm').addEventListener('change',controlsState);
+function completed(r){r=sanitizeEmojiDisplay_(r);const previousVersion=active.baseVersion;let kept=false;if(r.item){for(const [key,n] of Object.entries(controls)){if(!submittedValues||n.value===submittedValues[key])n.value=r.item[key]||'';else kept=true;}active.item={...r.item};}else active.item={...active.item,...values()};for(const entry of listEntries){if(entry.record.recordId===active.recordId||entry.record.selectionHash===previousVersion){Object.assign(entry.record,active.item,{recordId:active.recordId,selectionHash:r.baseVersion});entry.button.textContent=(active.item.date||'日期待補')+' '+(active.item.time||'時間待補')+' · '+active.item.name+' — 開啟修改';}}document.dispatchEvent?.(new Event('meetingsChanged'));active.baseVersion=r.baseVersion;$('editTitle').textContent=active.item.name||'未命名會議';dirty=kept;uncertain=false;pending=null;submittedValues=null;invalidateReview();message(kept?'原筆會議已更新；你另外修改的內容仍保留，尚未儲存。':'原筆會議已更新並讀回確認；沒有新增場次。');}
+$('editSave').addEventListener('click',async()=>{if(!review||busy||uncertain||!$('editConfirm').checked||review.patchJson!==JSON.stringify(patch()))return;submittedValues=values();pending={recordId:active.recordId,baseVersion:active.baseVersion,patch:review.patch,operationId:review.operationId,reviewDigest:review.reviewDigest,confirmDiff:true,confirmWarnings:true};busy=true;controlsState();message('正在更新原筆會議並查核結果…');try{const r=await rpc('saveMeetingEdit',pending);if(r.status==='success')completed(r);else{uncertain=true;message(r.message+' 輸入已保留，請查核儲存結果。',true);}}catch(e){uncertain=true;message(e.message,true);}finally{busy=false;controlsState();}});
+$('editCheck').addEventListener('click',async()=>{if(!pending||busy)return;busy=true;controlsState();try{const r=checked(await rpc('checkMeetingEdit',{recordId:pending.recordId,operationId:pending.operationId}));if(r.state==='applied')completed(r);else if(r.state==='notStarted'||r.state==='notApplied'){uncertain=false;message('已查核：這次更新尚未套用，原輸入仍保留。可重新確認差異後儲存。');invalidateReview();pending=null;}else{uncertain=false;pending=null;invalidateReview();message('目前資料已變更，未確認你的修改已套用。輸入仍保留；請先複製需要的內容，再取消並重新開啟比對。',true);}}catch(e){message(e.message,true);}finally{busy=false;controlsState();}});
+$('editCancel').addEventListener('click',()=>{if(busy||uncertain)return;sequence++;active=null;dirty=false;controls={};pending=null;invalidateReview();$('editPanel').hidden=true;message('已取消尚未儲存的修改，沒有更新 Sheet。');});
+controlsState();
+})();
+</script>
+</body></html>
+
