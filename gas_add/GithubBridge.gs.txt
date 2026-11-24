@@ -1,0 +1,113 @@
+/* GitHub 版橋接(2026-11-24 新增;不改動原有檔案的任何函式)。
+   每分鐘到私人倉庫取排隊的請求,呼叫本專案既有的函式(匯入、修改都走原本那一套),把結果寫回倉庫。
+   設定:指令碼屬性 GH_TOKEN = 只授權 meeting-desk-data 倉庫 Contents 讀寫的 GitHub 金鑰。
+   安裝:在編輯器執行一次 bridgeSetup。 */
+const GH_BRIDGE=Object.freeze({api:'https://api.github.com/repos/city2243/meeting-desk-data/contents/',branch:'main',
+  maxAgeMs:15*60*1000,cacheEveryMs:5*60*1000,activeMs:3*60*1000,loopMs:46000,sleepMs:3000,resultKeepMs:60*60*1000});
+function ghBridgeCalls_(){return {listEditableMeetings,previewInvitation,importInvitation,openEditableMeeting,previewMeetingEdit,checkMeetingEdit,saveMeetingEdit};}
+const GH_BRIDGE_MUTATING=Object.freeze(['importInvitation','saveMeetingEdit']);
+
+function ghFetch_(method,path,body){
+  const token=PropertiesService.getScriptProperties().getProperty('GH_TOKEN');if(!token)throw new Error('尚未設定指令碼屬性 GH_TOKEN。');
+  const options={method,muteHttpExceptions:true,headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}};
+  if(body){options.contentType='application/json';options.payload=JSON.stringify(body);}
+  const response=UrlFetchApp.fetch(GH_BRIDGE.api+path,options),code=response.getResponseCode(),text=response.getContentText();
+  let json=null;try{json=JSON.parse(text);}catch(e){}
+  return {code,json};
+}
+function ghRead_(path){const r=ghFetch_('get',path+'?ref='+GH_BRIDGE.branch);if(r.code===404)return null;if(r.code!==200||!r.json||typeof r.json.content!=='string')throw new Error('GitHub 讀取失敗 '+r.code+' '+path);
+  return {sha:r.json.sha,text:Utilities.newBlob(Utilities.base64Decode(r.json.content.replace(/\s/g,''))).getDataAsString('UTF-8')};}
+function ghList_(dir){const r=ghFetch_('get',dir+'?ref='+GH_BRIDGE.branch);if(r.code===404)return [];if(r.code!==200||!Array.isArray(r.json))throw new Error('GitHub 列目錄失敗 '+r.code+' '+dir);return r.json.filter(x=>x.type==='file');}
+function ghWrite_(path,text,message){
+  for(let attempt=0;attempt<3;attempt++){
+    const head=ghFetch_('get',path+'?ref='+GH_BRIDGE.branch),body={message,branch:GH_BRIDGE.branch,content:Utilities.base64Encode(text,Utilities.Charset.UTF_8)};
+    if(head.code===200&&head.json&&head.json.sha)body.sha=head.json.sha;else if(head.code!==404)throw new Error('GitHub 讀取失敗 '+head.code+' '+path);
+    const r=ghFetch_('put',path,body);if(r.code===200||r.code===201)return;
+    if(r.code!==409&&r.code!==422)throw new Error('GitHub 寫入失敗 '+r.code+' '+path);
+    Utilities.sleep(800);
+  }
+  throw new Error('GitHub 寫入衝突,重試三次仍失敗 '+path);
+}
+function ghRemove_(path,sha,message){const r=ghFetch_('delete',path,{message,sha,branch:GH_BRIDGE.branch});if(r.code!==200&&r.code!==404&&r.code!==409)throw new Error('GitHub 刪除失敗 '+r.code+' '+path);}
+
+/* 會議清單快照:內容有變才寫,避免無謂的版本紀錄。 */
+function ghBridgeWriteCache_(force){
+  const props=PropertiesService.getScriptProperties(),now=Date.now();
+  if(!force&&now-Number(props.getProperty('GH_CACHE_AT')||0)<GH_BRIDGE.cacheEveryMs)return false;
+  const result=listEditableMeetings({});props.setProperty('GH_CACHE_AT',String(now));
+  if(!result||result.status!=='success')return false;
+  const body=JSON.stringify(result),digest=Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,body,Utilities.Charset.UTF_8));
+  if(digest===props.getProperty('GH_CACHE_HASH'))return false;
+  ghWrite_('cache/meetings.json',JSON.stringify({at:Utilities.formatDate(new Date(),'Asia/Taipei',"yyyy-MM-dd'T'HH:mm:ss"),result}),'cache meetings');
+  props.setProperty('GH_CACHE_HASH',digest);return true;
+}
+function ghBridgeRun_(request){
+  if(request.fn==='ping'){requireOwner_();return {status:'success',pong:true};}
+  const calls=ghBridgeCalls_();if(!Object.prototype.hasOwnProperty.call(calls,request.fn))throw new Error('不支援的操作：'+request.fn);
+  return calls[request.fn](request.arg===null||request.arg===undefined?{}:request.arg);
+}
+/* 回傳這一輪處理了幾筆。每筆:先寫結果、再刪排隊檔;結果已存在就不重跑,避免同一筆寫兩次。 */
+function ghBridgeProcessQueue_(){
+  const files=ghList_('queue').filter(f=>/^[0-9]{13}-[0-9a-f]{12}\.json$/.test(f.name)).sort((a,b)=>a.name.localeCompare(b.name));let done=0;
+  for(const file of files){
+    const id=file.name.slice(0,-5),resultPath='results/'+id+'.json';
+    if(ghRead_(resultPath)){ghRemove_('queue/'+file.name,file.sha,'queue done');continue;}
+    let out;
+    try{
+      const raw=ghRead_('queue/'+file.name);if(!raw)continue;
+      const request=JSON.parse(raw.text);if(!request||request.id!==id||typeof request.fn!=='string')throw new Error('排隊內容格式不符。');
+      const age=Date.now()-Number(id.slice(0,13));
+      if(age>GH_BRIDGE.maxAgeMs)throw new Error('這筆請求排隊超過 15 分鐘，為了避免過時的內容被寫入，已取消。請重新操作一次。');
+      out={id,ok:true,value:ghBridgeRun_(request)};
+      if(GH_BRIDGE_MUTATING.includes(request.fn)){try{ghBridgeWriteCache_(true);}catch(e){}}
+    }catch(e){out={id,ok:false,error:String(e&&e.message||e)};}
+    ghWrite_(resultPath,JSON.stringify(out),'result');
+    ghRemove_('queue/'+file.name,file.sha,'queue done');done++;
+  }
+  return done;
+}
+function ghBridgeSweepResults_(){
+  const props=PropertiesService.getScriptProperties(),now=Date.now();if(now-Number(props.getProperty('GH_SWEEP_AT')||0)<30*60*1000)return;
+  props.setProperty('GH_SWEEP_AT',String(now));
+  for(const file of ghList_('results')){const stamp=Number(file.name.slice(0,13));if(stamp&&now-stamp>GH_BRIDGE.resultKeepMs)ghRemove_('results/'+file.name,file.sha,'result expired');}
+}
+/* 每分鐘排程的進入點。有人在用時留在迴圈裡每 3 秒看一次,回應才會快;沒人用就看一眼就結束。 */
+function bridgeTick(){
+  const lock=LockService.getUserLock();if(!lock.tryLock(500))return;
+  try{
+    const props=PropertiesService.getScriptProperties(),start=Date.now();
+    let active=start-Number(props.getProperty('GH_LAST_ACTIVE')||0)<GH_BRIDGE.activeMs;
+    while(true){
+      if(ghBridgeProcessQueue_()>0){active=true;props.setProperty('GH_LAST_ACTIVE',String(Date.now()));}
+      ghBridgeWriteCache_(false);
+      if(!active||Date.now()-start>GH_BRIDGE.loopMs)break;
+      Utilities.sleep(GH_BRIDGE.sleepMs);
+    }
+    ghBridgeSweepResults_();
+  }catch(e){
+    console.error('bridgeTick '+(e&&e.message||e));
+    PropertiesService.getScriptProperties().setProperty('GH_LAST_ERROR',new Date().toISOString()+' '+String(e&&e.message||e).slice(0,300));
+  }finally{lock.releaseLock();}
+}
+/* 把現有頁面原樣輸出成 GitHub 版(只把逾時 30 秒放寬成 180 秒,並插入橋接程式),存到私人倉庫 page/index.html。 */
+function bridgeBuildPage(){
+  requireOwner_();
+  let html=HtmlService.createTemplateFromFile('Index').evaluate().getContent();
+  const timers=(html.match(/\},30000\)/g)||[]).length;if(timers!==3)throw new Error('逾時設定的位置與預期不符（找到 '+timers+' 處，應為 3 處），已停止輸出。');
+  html=html.replace(/\},30000\)/g,'},180000)');
+  if(html.indexOf('</head>')<0)throw new Error('頁面缺少 head 結尾，已停止輸出。');
+  const shim=HtmlService.createHtmlOutputFromFile('GhShim').getContent();
+  html=html.replace('</head>','<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>我的會議</title>'+shim+'</head>');
+  ghWrite_('page/index.html',html,'build page');
+  return 'ok '+html.length;
+}
+/* 安裝:建立每分鐘排程、輸出頁面、寫第一份清單快照。重複執行不會多裝。 */
+function bridgeSetup(){
+  requireOwner_();
+  for(const t of ScriptApp.getProjectTriggers())if(t.getHandlerFunction()==='bridgeTick')ScriptApp.deleteTrigger(t);
+  ScriptApp.newTrigger('bridgeTick').timeBased().everyMinutes(1).create();
+  const page=bridgeBuildPage();ghBridgeWriteCache_(true);
+  return 'setup ok; page '+page;
+}
+/* 停用:移除排程(倉庫內容與金鑰不動)。 */
+function bridgeStop(){requireOwner_();let n=0;for(const t of ScriptApp.getProjectTriggers())if(t.getHandlerFunction()==='bridgeTick'){ScriptApp.deleteTrigger(t);n++;}return 'removed '+n;}
